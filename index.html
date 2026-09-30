@@ -77,6 +77,12 @@ select{background:var(--panel);border:1px solid var(--line);border-radius:8px;pa
 .sw .tr{background-image:linear-gradient(45deg,#ccc 25%,#fff 25%,#fff 50%,#ccc 50%,#ccc 75%,#fff 75%);background-size:10px 10px}
 .sw input[type=color]{width:34px;height:30px;padding:0;border:1px solid var(--line);border-radius:8px;background:none;cursor:pointer}
 .sp{flex:1}
+#editbar{display:none;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+#editbar .btn.on{background:var(--ink);color:var(--bg)}
+#editbar input[type=range]{width:120px;accent-color:var(--accent)}
+.editwrap{position:relative;display:inline-block;line-height:0}
+.editwrap img{max-width:100%;max-height:520px;display:block;opacity:.35}
+.hint{font-size:13px;color:var(--muted);flex-basis:100%}
 footer{margin-top:36px;color:var(--muted);font-size:13px}
 </style>
 </head>
@@ -129,7 +135,17 @@ footer{margin-top:36px;color:var(--muted);font-size:13px}
           <input type="color" id="custom" value="#f2c94c" aria-label="Custom colour">
         </div>
         <span class="sp"></span>
+        <button class="btn ghost" id="edit" data-t="edit" disabled>Touch up</button>
         <button class="btn" id="dl" data-t="dl" disabled>Download PNG</button>
+      </div>
+      <div id="editbar">
+        <button class="btn on" id="tRestore" data-t="restore">Restore</button>
+        <button class="btn ghost" id="tErase" data-t="erase">Erase</button>
+        <label style="font-size:14px;color:var(--muted);display:flex;gap:8px;align-items:center"><span data-t="size">Brush size</span><input type="range" id="size" min="8" max="150" value="40"></label>
+        <button class="btn ghost" id="undo" data-t="undo">Undo</button>
+        <span class="sp"></span>
+        <button class="btn" id="finish" data-t="finish">Finish</button>
+        <div class="hint" data-t="hint">Paint over missing parts with Restore. The faded original shows what will come back.</div>
       </div>
     </div>
   </section>
@@ -142,9 +158,9 @@ import { removeBackground } from "https://cdn.jsdelivr.net/npm/@imgly/background
 
 const T = {
   en:{h1:"Remove image backgrounds. Free. No limit.",sub:"Your photos never leave your device. The AI runs inside your browser, so there is no upload, no sign-up and no daily limit.",drop:"Drop images here or click to upload",dropsub:"JPG, PNG or WebP. You can select many at once.",quality:"Quality",q1:"Accurate (recommended)",q2:"Maximum accuracy (slower, larger download)",q3:"Fast (lower accuracy)",clear:"Clear all",dlall:"Download all",dl:"Download PNG",foot:"The first run downloads the AI model once (about 40–170 MB depending on quality). After that it is cached and works fast.",
-    wait:"Waiting…",load:"Loading AI model… ",proc:"Removing background…",done:"Done. Drag the handle to compare.",fail:"Could not process this image. Try another file or check your connection for the first model download.",before:"Original",after:"Result",bad:"Unsupported file. Use JPG, PNG or WebP."},
+    wait:"Waiting…",load:"Loading AI model… ",proc:"Removing background…",done:"Done. Drag the handle to compare.",fail:"Could not process this image. Try another file or check your connection for the first model download.",before:"Original",after:"Result",bad:"Unsupported file. Use JPG, PNG or WebP.",edit:"Touch up",restore:"Restore",erase:"Erase",size:"Brush size",undo:"Undo",finish:"Finish",hint:"Paint over missing parts with Restore. The faded original shows what will come back."},
   ne:{h1:"फोटोको ब्याकग्राउन्ड हटाउनुहोस्। निःशुल्क। असीमित।",sub:"तपाईंको फोटो कहीँ upload हुँदैन। AI तपाईंकै browser मा चल्छ, त्यसैले sign-up र दैनिक limit केही छैन।",drop:"फोटो यहाँ drop गर्नुहोस् वा क्लिक गरेर छान्नुहोस्",dropsub:"JPG, PNG वा WebP। एकैचोटि धेरै छान्न सकिन्छ।",quality:"क्वालिटी",q1:"सटीक (सिफारिस)",q2:"अधिकतम सटीक (ढिलो, ठूलो download)",q3:"छिटो (कम सटीक)",clear:"सबै हटाउनुहोस्",dlall:"सबै download",dl:"PNG download",foot:"पहिलो पटक AI model एक पटक download हुन्छ (क्वालिटी अनुसार ४०–१७० MB)। त्यसपछि cache भएर छिटो चल्छ।",
-    wait:"पर्खँदै…",load:"AI model लोड हुँदै… ",proc:"ब्याकग्राउन्ड हटाउँदै…",done:"सकियो। तुलना गर्न handle तान्नुहोस्।",fail:"यो फोटो प्रोसेस हुन सकेन। अर्को फाइल प्रयास गर्नुहोस् वा इन्टरनेट जाँच्नुहोस्।",before:"मूल",after:"नतिजा",bad:"यो फाइल चल्दैन। JPG, PNG वा WebP प्रयोग गर्नुहोस्।"}
+    wait:"पर्खँदै…",load:"AI model लोड हुँदै… ",proc:"ब्याकग्राउन्ड हटाउँदै…",done:"सकियो। तुलना गर्न handle तान्नुहोस्।",fail:"यो फोटो प्रोसेस हुन सकेन। अर्को फाइल प्रयास गर्नुहोस् वा इन्टरनेट जाँच्नुहोस्।",before:"मूल",after:"नतिजा",bad:"यो फाइल चल्दैन। JPG, PNG वा WebP प्रयोग गर्नुहोस्।",edit:"सच्याउनुहोस्",restore:"फर्काउनुहोस्",erase:"मेटाउनुहोस्",size:"ब्रश साइज",undo:"पूर्ववत",finish:"सकियो",hint:"हराएको भागमा “फर्काउनुहोस्” ले रंग्याउनुहोस्। धमिलो मूल फोटोले के फर्किन्छ देखाउँछ।"}
 };
 let lang="en";
 const $=s=>document.querySelector(s);
@@ -217,7 +233,7 @@ function render(){
     b.innerHTML=`<img alt=""><span class="st"></span>`;
     b.querySelector("img").src=it.url||it.src;
     b.querySelector(".st").textContent=it.status==="done"?"✓":it.status==="work"?"…":it.status==="fail"?"!":tr("wait");
-    b.onclick=()=>{cur=i;render();refreshMsg()};
+    b.onclick=async()=>{if(editing)await finishEdit();cur=i;render();refreshMsg()};
     q.appendChild(b);
   });
   drawView();
@@ -233,7 +249,9 @@ function refreshMsg(){
 function drawView(){
   const v=$("#view"); v.innerHTML=""; const it=items[cur];
   $("#dl").disabled=!(it&&it.out);
+  $("#edit").disabled=!(it&&it.out);
   if(!it)return;
+  if(editing&&it.cv){ drawEdit(it,v); return }
   if(!it.out){ const im=new Image(); im.src=it.src; im.style.cssText="max-width:100%;max-height:520px;opacity:.6"; v.appendChild(im); return }
   const fill=document.createElement("div"); fill.className="bgfill"; if(bg)fill.style.background=bg; v.appendChild(fill);
   const c=document.createElement("div"); c.className="compare"; c.style.position="relative";
@@ -254,10 +272,10 @@ document.querySelectorAll("#sw button").forEach(b=>b.onclick=()=>{
 $("#custom").oninput=e=>{bg=e.target.value;document.querySelectorAll("#sw button").forEach(x=>x.setAttribute("aria-pressed","false"));drawView()};
 
 async function composite(it){
-  if(!bg)return it.out;
-  const img=await createImageBitmap(it.out);
+  if(!bg&&!it.cv)return it.out;
+  const img=it.cv||await createImageBitmap(it.out);
   const cv=document.createElement("canvas"); cv.width=img.width; cv.height=img.height;
-  const ctx=cv.getContext("2d"); ctx.fillStyle=bg; ctx.fillRect(0,0,cv.width,cv.height); ctx.drawImage(img,0,0);
+  const ctx=cv.getContext("2d"); if(bg){ctx.fillStyle=bg; ctx.fillRect(0,0,cv.width,cv.height)} ctx.drawImage(img,0,0);
   return new Promise(r=>cv.toBlob(r,"image/png"));
 }
 function save(blob,name){
@@ -267,7 +285,63 @@ function save(blob,name){
 const nm=it=>it.file.name.replace(/\.[^.]+$/,"")+"-nobg.png";
 $("#dl").onclick=async()=>{const it=items[cur]; if(it?.out)save(await composite(it),nm(it))};
 $("#dlAll").onclick=async()=>{for(const it of items){ if(it.out){save(await composite(it),nm(it)); await new Promise(r=>setTimeout(r,350))} }};
-$("#clear").onclick=()=>{items.forEach(i=>{URL.revokeObjectURL(i.src);i.url&&URL.revokeObjectURL(i.url)});items.length=0;cur=-1;showBar(-1);setMsg("");render()};
+$("#clear").onclick=()=>{editing=false;$("#editbar").style.display="none";items.forEach(i=>{URL.revokeObjectURL(i.src);i.url&&URL.revokeObjectURL(i.url)});items.length=0;cur=-1;showBar(-1);setMsg("");render()};
+
+let editing=false, tool="restore", hist=[];
+async function ensureCanvas(it){
+  if(it.cv)return;
+  const bmp=await createImageBitmap(it.out);
+  const cv=document.createElement("canvas"); cv.width=bmp.width; cv.height=bmp.height;
+  cv.getContext("2d").drawImage(bmp,0,0);
+  const o=new Image(); o.src=it.src; await o.decode();
+  it.orig=o; it.cv=cv;
+}
+function drawEdit(it,v){
+  const fill=document.createElement("div"); fill.className="bgfill"; if(bg)fill.style.background=bg; v.appendChild(fill);
+  const w=document.createElement("div"); w.className="editwrap";
+  const g=new Image(); g.src=it.src; g.alt=""; w.appendChild(g);
+  const cv=it.cv, ctx=cv.getContext("2d");
+  cv.style.cssText="position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;touch-action:none";
+  w.appendChild(cv); v.appendChild(w);
+  let drawing=false,last=null;
+  const pt=e=>{const r=cv.getBoundingClientRect();const k=cv.width/r.width;return{x:(e.clientX-r.left)*k,y:(e.clientY-r.top)*k,k}};
+  const stamp=(x,y,k)=>{
+    const rad=Math.max(1,$("#size").value/2*k);
+    ctx.save(); ctx.beginPath(); ctx.arc(x,y,rad,0,Math.PI*2);
+    if(tool==="restore"){ ctx.clip(); ctx.drawImage(it.orig,0,0,cv.width,cv.height); }
+    else { ctx.globalCompositeOperation="destination-out"; ctx.fill(); }
+    ctx.restore();
+  };
+  const line=(a,b)=>{
+    const dx=b.x-a.x, dy=b.y-a.y, d=Math.hypot(dx,dy), step=Math.max(1,$("#size").value/6*b.k);
+    for(let t=0;t<=d;t+=step){ stamp(a.x+dx*(d?t/d:0),a.y+dy*(d?t/d:0),b.k) }
+    stamp(b.x,b.y,b.k);
+  };
+  cv.onpointerdown=e=>{
+    cv.setPointerCapture(e.pointerId); drawing=true;
+    hist.push(ctx.getImageData(0,0,cv.width,cv.height)); if(hist.length>8)hist.shift();
+    last=pt(e); stamp(last.x,last.y,last.k);
+  };
+  cv.onpointermove=e=>{ if(!drawing)return; const p=pt(e); line(last,p); last=p };
+  cv.onpointerup=cv.onpointercancel=()=>{drawing=false};
+}
+async function finishEdit(){
+  const it=items[cur]; editing=false; $("#editbar").style.display="none";
+  if(it?.cv&&hist.length){
+    const b=await new Promise(r=>it.cv.toBlob(r,"image/png"));
+    it.out=b; it.url=URL.createObjectURL(b);
+  }
+  hist=[]; render();
+}
+$("#edit").onclick=async()=>{
+  const it=items[cur]; if(!it?.out)return;
+  await ensureCanvas(it); editing=true; hist=[]; $("#editbar").style.display="flex"; drawView();
+};
+$("#finish").onclick=finishEdit;
+$("#undo").onclick=()=>{ const it=items[cur]; const s=hist.pop(); if(s&&it?.cv)it.cv.getContext("2d").putImageData(s,0,0) };
+const setTool=t=>{tool=t;$("#tRestore").className="btn "+(t==="restore"?"on":"ghost");$("#tErase").className="btn "+(t==="erase"?"on":"ghost")};
+$("#tRestore").onclick=()=>setTool("restore");
+$("#tErase").onclick=()=>setTool("erase");
 
 applyLang();
 </script>
